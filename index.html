@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Mood Tracker</title>
+	<style>
+		:root{
+			--bg:#0b0f14; --panel:#0f1720; --muted:#9aa5b1; --accent:#4f46e5;
+			--good:#22c55e; --ok:#f59e0b; --bad:#ef4444; --neutral:#64748b;
+			--glass: rgba(255,255,255,0.03);
+			--radius:12px;
+			--max-width:1000px;
+		}
+		*{box-sizing:border-box}
+		html,body{height:100%}
+			body{
+				margin:0;padding:24px; min-height:100vh; background:linear-gradient(180deg,#04060a 0%, #08131a 100%);
+				color:#e6eef6; font-family:Inter,Segoe UI,Roboto,system-ui,Arial; -webkit-font-smoothing:antialiased;
+				display:flex; align-items:start; justify-content:center;
+				/* allow background to cover beyond viewport */
+				background-attachment:fixed;
+			}
+		.container{width:100%; max-width:var(--max-width)}
+		header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+		.brand{display:flex;gap:12px;align-items:center}
+		.logo{width:44px;height:44px;background:linear-gradient(135deg,var(--accent),#06b6d4);border-radius:10px;display:grid;place-items:center;font-weight:700}
+		h1{font-size:18px;margin:0}
+		.controls{display:flex;gap:8px;align-items:center}
+		button{background:var(--glass);border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 12px;border-radius:10px;cursor:pointer}
+		button.primary{background:linear-gradient(90deg,rgba(79,70,229,0.18),rgba(6,182,212,0.06));color:#dbeafe;border:none}
+		.card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:18px;border-radius:var(--radius);box-shadow:0 6px 18px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+		/* Calendar */
+		.calendar{display:flex;gap:18px;flex-wrap:wrap}
+		.month{flex:1 1 520px;min-width:280px}
+		.month-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+		.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+		.dow{color:var(--muted);font-size:12px;text-align:center}
+	.day{min-height:68px;padding:8px;border-radius:10px;background:transparent;border:1px dashed rgba(255,255,255,0.02);position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
+		.day .num{font-weight:600;color:#e6eef6}
+		.day .mood-badge{position:absolute;right:8px;bottom:8px;padding:6px 8px;border-radius:999px;font-size:12px}
+		.mood-1{background:linear-gradient(90deg, rgba(239,68,68,0.12), rgba(239,68,68,0.08));color:#fecaca;border:1px solid rgba(239,68,68,0.16)}
+		.mood-2{background:linear-gradient(90deg, rgba(249,115,22,0.08), rgba(249,115,22,0.04));color:#fed7aa;border:1px solid rgba(249,115,22,0.12)}
+		.mood-3{background:linear-gradient(90deg, rgba(100,116,139,0.08), rgba(100,116,139,0.04));color:#cbd5e1;border:1px solid rgba(100,116,139,0.12)}
+		.mood-4{background:linear-gradient(90deg, rgba(34,197,94,0.08), rgba(34,197,94,0.04));color:#bbf7d0;border:1px solid rgba(34,197,94,0.12)}
+		.mood-5{background:linear-gradient(90deg, rgba(79,70,229,0.12), rgba(79,70,229,0.06));color:#dbeafe;border:1px solid rgba(79,70,229,0.16)}
+		.empty{opacity:0.35}
+		.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+		.legend-item{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px}
+		.legend-swatch{width:14px;height:14px;border-radius:4px}
+
+		/* Right column with analytics */
+		.analytics{width:340px;min-width:260px}
+		.table{width:100%;border-collapse:collapse;margin-top:12px}
+		.table th{text-align:left;color:var(--muted);font-size:12px;padding:8px}
+		.table td{padding:8px}
+		.bar{height:10px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden}
+		.bar > i{display:block;height:100%;background:var(--accent)}
+
+		/* Modal */
+		.modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:grid;place-items:center;z-index:60}
+		.modal{width:100%;max-width:420px;background:var(--panel);padding:18px;border-radius:12px}
+		.mood-row{display:flex;gap:8px;margin-top:12px}
+		.mood-btn{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);cursor:pointer}
+		.mood-btn.selected{box-shadow:0 6px 18px rgba(79,70,229,0.12);transform:translateY(-2px)}
+
+		/* Responsive */
+		@media (max-width:900px){
+			.calendar{flex-direction:column}
+			.analytics{width:100%}
+			.month{min-width:100%}
+		}
+
+		/* Small touches */
+		.muted{color:var(--muted)}
+		a.link{color:var(--accent);text-decoration:none}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<header>
+			<div class="brand">
+				<div class="logo">MT</div>
+				<div>
+					<h1>Mood Tracker</h1>
+					<div class="muted" style="font-size:13px">Track daily mood — click a day to rate 1–5</div>
+				</div>
+			</div>
+				<div class="controls">
+					<button id="todayBtn">Today</button>
+				</div>
+		</header>
+
+		<div class="calendar">
+			<div class="month card" id="monthCard">
+				<div class="month-header">
+					<div>
+						<div id="monthLabel" style="font-weight:700"></div>
+						<div class="muted" id="yearLabel" style="font-size:12px"></div>
+					</div>
+					<div style="display:flex;gap:8px;align-items:center">
+						<button id="prevMonth">◀</button>
+						<button id="nextMonth">▶</button>
+					</div>
+				</div>
+
+				<div class="month-grid" id="dowHeader">
+					<!-- DOW headings injected -->
+				</div>
+				<div class="month-grid" id="daysGrid" style="margin-top:8px">
+					<!-- Days injected -->
+				</div>
+
+				<div class="legend muted">
+					<div class="legend-item"><div class="legend-swatch mood-1" style="width:14px;height:14px"></div>Very sad (1)</div>
+					<div class="legend-item"><div class="legend-swatch mood-2"></div>Sad (2)</div>
+					<div class="legend-item"><div class="legend-swatch mood-3"></div>Neutral (3)</div>
+					<div class="legend-item"><div class="legend-swatch mood-4"></div>Happy (4)</div>
+					<div class="legend-item"><div class="legend-swatch mood-5"></div>Very happy (5)</div>
+				</div>
+			</div>
+
+			<aside class="analytics card">
+				<div style="display:flex;justify-content:space-between;align-items:center">
+					<div style="font-weight:700">This month — analytics</div>
+					<div class="muted" id="summaryCount"></div>
+				</div>
+
+				<table class="table" id="distributionTable">
+					<thead><tr><th>Rating</th><th>Count</th><th style="width:70%">Share</th></tr></thead>
+					<tbody></tbody>
+				</table>
+
+				<table class="table" id="averagesTable">
+					<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+					<tbody>
+						<tr><td>Average (month)</td><td id="avgMonth">—</td></tr>
+						<tr><td>Average (all time)</td><td id="avgAll">—</td></tr>
+					</tbody>
+				</table>
+			</aside>
+		</div>
+
+		<!-- Modals -->
+		<div id="modalRoot" style="display:none"></div>
+
+	<!-- monthsList removed (navigation via arrows) -->
+
+	</div>
+
+	<script>
+		// Simple utilities
+		const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+		const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+	// Storage: key prefix
+	const STORE_KEY = 'mood-tracker:v1';
+
+	// ...localStorage-only storage helpers...
+
+		function loadStore(){
+			try{ return JSON.parse(localStorage.getItem(STORE_KEY) || '{}') }catch(e){return{}} }
+		function saveStore(s){ localStorage.setItem(STORE_KEY, JSON.stringify(s)) }
+
+		// todo list state (current view)
+		let state = {year:(new Date()).getFullYear(), month:(new Date()).getMonth()};
+
+		// init
+		function init(){
+			renderDow();
+			bindControls();
+			// localStorage-only: render month immediately
+			renderMonth();
+		}
+
+	// file linking removed: app relies on localStorage only
+
+	// file linking UI removed
+
+	// file linking functions removed
+
+		function renderDow(){
+			const el = document.getElementById('dowHeader'); el.innerHTML = '';
+			for(let d of DOW){ const div = document.createElement('div'); div.className='dow'; div.textContent=d; el.appendChild(div) }
+		}
+
+		function bindControls(){
+			document.getElementById('prevMonth').addEventListener('click', ()=>changeMonth(-1));
+			document.getElementById('nextMonth').addEventListener('click', ()=>changeMonth(1));
+			document.getElementById('todayBtn').addEventListener('click', ()=>{ const t=new Date(); state.year=t.getFullYear(); state.month=t.getMonth(); renderMonth(); });
+		// view all months removed; navigation via prev/next arrows
+		}
+
+		function changeMonth(delta){
+			state.month += delta;
+			if(state.month<0){ state.month=11; state.year-- }
+			if(state.month>11){ state.month=0; state.year++ }
+			renderMonth();
+		}
+
+		function renderMonth(){
+			const {year,month} = state; const first = new Date(year,month,1); const startDow = first.getDay();
+			const daysInMonth = new Date(year,month+1,0).getDate();
+			document.getElementById('monthLabel').textContent = monthNames[month];
+			document.getElementById('yearLabel').textContent = year;
+
+			const grid = document.getElementById('daysGrid'); grid.innerHTML='';
+			// leading empty slots
+			for(let i=0;i<startDow;i++){ const e=document.createElement('div'); e.className='day empty card'; e.innerHTML=''; grid.appendChild(e) }
+
+			const store = loadStore();
+			for(let d=1; d<=daysInMonth; d++){
+				const dateKey = keyFor(year,month,d);
+				const rating = store[dateKey] || null;
+				const cell = document.createElement('div'); cell.className='day'; cell.dataset.date = dateKey;
+				const num = document.createElement('div'); num.className='num'; num.textContent = d; cell.appendChild(num);
+				if(rating){ const b=document.createElement('div'); b.className='mood-badge mood-'+rating; b.textContent = rating; cell.appendChild(b) }
+				cell.addEventListener('click', ()=>openRatingModal(dateKey));
+				grid.appendChild(cell);
+			}
+
+			// fill trailing blanks to keep grid consistent
+			const totalCells = startDow + daysInMonth; const trailing = (7 - (totalCells % 7)) %7;
+			for(let i=0;i<trailing;i++){ const e=document.createElement('div'); e.className='day empty card'; grid.appendChild(e) }
+
+			updateAnalytics();
+		}
+
+		function keyFor(y,m,d){ // yyyy-mm-dd
+			const mm = String(m+1).padStart(2,'0'); const dd = String(d).padStart(2,'0'); return `${y}-${mm}-${dd}` }
+
+		function openRatingModal(dateKey){
+			const root = document.getElementById('modalRoot'); root.innerHTML = '';
+			const backdrop = document.createElement('div'); backdrop.className='modal-backdrop';
+			const modal = document.createElement('div'); modal.className='modal card';
+			const title = document.createElement('div'); title.style.fontWeight='700'; title.textContent = `Rate ${dateKey}`;
+			const desc = document.createElement('div'); desc.className='muted'; desc.style.fontSize='13px'; desc.textContent='Tap a rating 1 (very sad) → 5 (very happy)';
+			modal.appendChild(title); modal.appendChild(desc);
+
+			const row = document.createElement('div'); row.className='mood-row';
+			const store = loadStore(); const current = store[dateKey] || null;
+			for(let r=1;r<=5;r++){
+				const b = document.createElement('button'); b.className='mood-btn mood-'+r; b.textContent = r;
+				if(current==r) b.classList.add('selected');
+				b.addEventListener('click', ()=>{ saveRating(dateKey,r); closeModal(); });
+				row.appendChild(b);
+			}
+
+			const remove = document.createElement('button'); remove.textContent='Clear'; remove.style.marginTop='12px';
+			remove.addEventListener('click', ()=>{ removeRating(dateKey); closeModal(); });
+			const cancel = document.createElement('button'); cancel.textContent='Cancel'; cancel.style.marginTop='12px'; cancel.style.marginLeft='8px';
+			cancel.addEventListener('click', closeModal);
+
+			modal.appendChild(row);
+			modal.appendChild(remove); modal.appendChild(cancel);
+			backdrop.appendChild(modal); root.appendChild(backdrop); root.style.display='block';
+			backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) closeModal(); });
+		}
+
+		function closeModal(){ document.getElementById('modalRoot').style.display='none'; document.getElementById('modalRoot').innerHTML=''; renderMonth(); }
+
+		function saveRating(dateKey, rating){ const store = loadStore(); store[dateKey] = rating; saveStore(store); renderMonth(); }
+		function removeRating(dateKey){ const store = loadStore(); delete store[dateKey]; saveStore(store); renderMonth(); }
+
+	// watch localStorage changes (no file linking) — leave localStorage behavior unchanged
+
+	// openMonthsList removed — navigation with arrows
+
+		function updateAnalytics(){
+			const store = loadStore(); const {year,month} = state; const monthPrefix = `${year}-${String(month+1).padStart(2,'0')}`;
+			const counts = {1:0,2:0,3:0,4:0,5:0}; let total=0; let sum=0; let allSum=0; let allCount=0;
+			for(const k in store){ const v=store[k]; if(!v) continue; allSum += v; allCount++; if(k.startsWith(monthPrefix)){ counts[v]++; total++; sum += v } }
+
+			// distribution table
+			const tbody = document.querySelector('#distributionTable tbody'); tbody.innerHTML='';
+			for(let r=5;r>=1;r--){ const tr=document.createElement('tr'); const td1=document.createElement('td'); td1.textContent = `${r}`; const td2=document.createElement('td'); td2.textContent = counts[r] || 0; const td3=document.createElement('td'); const barWrap=document.createElement('div'); barWrap.className='bar'; const inner=document.createElement('i'); const pct = total ? Math.round((counts[r]/total)*100) : 0; inner.style.width = pct + '%'; inner.style.background = moodColorFor(r); barWrap.appendChild(inner); td3.appendChild(barWrap);
+				tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tbody.appendChild(tr) }
+
+			document.getElementById('summaryCount').textContent = `${total} rated`;
+			document.getElementById('avgMonth').textContent = total? (sum/total).toFixed(2) : '—';
+			document.getElementById('avgAll').textContent = allCount? (allSum/allCount).toFixed(2) : '—';
+		}
+
+		function moodColorFor(r){ switch(r){ case 1: return 'linear-gradient(90deg,#ef4444,#fca5a5)'; case 2: return 'linear-gradient(90deg,#f97316,#fed7aa)'; case 3: return 'linear-gradient(90deg,#64748b,#cbd5e1)'; case 4: return 'linear-gradient(90deg,#22c55e,#bbf7d0)'; case 5: return 'linear-gradient(90deg,#4f46e5,#a78bfa)'; }
+		}
+
+		// init on load
+		init();
+	</script>
+</body>
+</html>
